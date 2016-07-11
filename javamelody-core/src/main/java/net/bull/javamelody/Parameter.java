@@ -338,11 +338,6 @@ public enum Parameter {
 	APP_HOST("app-host"),
 
 	/**
-	 * Specify the context path of this instance.
-	 */
-	APP_CONTEXT_PATH("app-context-path"),
-
-	/**
 	 * The port which is used by the monitored app.
 	 */
 	APP_PORT("app-port"),

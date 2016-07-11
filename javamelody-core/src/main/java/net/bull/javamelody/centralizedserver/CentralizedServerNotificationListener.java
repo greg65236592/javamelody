@@ -56,7 +56,7 @@ public class CentralizedServerNotificationListener implements ServletContextList
 	 * {@link javax.servlet.ServletContextListener#contextInitialized(ServletContextEvent)} 
 	 * and server start time.
 	 */
-	protected static final int NOTIFY_DELAYS = 15000;
+	protected static final int NOTIFY_DELAYS = 30000;
 
 	private static final String IP_WEB_SERVICE_URL = "http://checkip.amazonaws.com";
 

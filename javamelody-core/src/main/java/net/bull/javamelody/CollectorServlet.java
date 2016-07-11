@@ -113,8 +113,8 @@ public class CollectorServlet extends HttpServlet {
 		}
 
 		// post du formulaire d'ajout d'application à monitorer
-		final String appName = req.getParameter("appName");
-		final String appUrls = req.getParameter("appUrls");
+		final String appName = req.getParameter(Parameter.REQ_PARA_APPNAME.getCode());
+		final String appUrls = req.getParameter(Parameter.REQ_PARA_APPURLS.getCode());
 		I18N.bindLocale(req.getLocale());
 		final CollectorController collectorController = new CollectorController(collectorServer);
 		try {

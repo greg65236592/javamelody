@@ -310,7 +310,57 @@ public enum Parameter {
 	 * The class must implement the interface net.bull.javamelody.JavaMelodyLogger,
 	 * such as net.bull.javamelody.Log4JLogger, net.bull.javamelody.JavaLogger or net.bull.javamelody.LogbackLogger.
 	 */
-	LOGGER_CLASS("logger-class");
+	LOGGER_CLASS("logger-class"),
+
+	/**
+	 * The url of Javamelody centralized server.
+	 */
+	CENTRALIZED_SERVER_HOST("centralized-server-host"),
+
+	/**
+	 * The url of Javamelody centralized port.
+	 */
+	CENTRALIZED_SERVER_PORT("centralized-server-port"),
+
+	/**
+	 * The url of Javamelody centralized port.
+	 */
+	CENTRALIZED_SERVER_CONTEXT_PATH("centralized-server-context-path"),
+
+	/**
+	 * The app name which represents the instance.
+	 */
+	APP_NAME("app-name"),
+
+	/**
+	 * Specify the url of this instance.
+	 */
+	APP_HOST("app-host"),
+
+	/**
+	 * Specify the context path of this instance.
+	 */
+	APP_CONTEXT_PATH("app-context-path"),
+
+	/**
+	 * The port which is used by the monitored app.
+	 */
+	APP_PORT("app-port"),
+
+	/**
+	 * Get instance public ip.
+	 */
+	USE_PUBLIC_IP("use-public-ip"),
+
+	/**
+	 * Used when add app to collect server.
+	 */
+	REQ_PARA_APPNAME("appName"),
+
+	/**
+	 * Used when add app to collect server.
+	 */
+	REQ_PARA_APPURLS("appUrls");
 
 	private final String code;
 

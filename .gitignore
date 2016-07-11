@@ -6,3 +6,4 @@ plugins
 *.out
 .settings/
 .classpath
+MANIFEST.MF

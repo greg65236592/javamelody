@@ -5,5 +5,6 @@ plugins
 *.diff
 *.out
 .settings/
+.project
 .classpath
 MANIFEST.MF

@@ -43,7 +43,7 @@ import java.util.regex.Pattern;
  * et transmises au serveur de collecte.
  * @author Emeric Vernat
  */
-class Counter implements Cloneable, Serializable { // NOPMD
+public class Counter implements Cloneable, Serializable { // NOPMD
 	/**
 	 * Nom du counter des requêtes http.
 	 */

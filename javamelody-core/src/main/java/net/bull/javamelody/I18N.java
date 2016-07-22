@@ -33,7 +33,7 @@ import java.util.TimeZone;
  * La locale pour les rapports vient de la requête et est associée au thread courant.
  * @author Emeric Vernat
  */
-final class I18N {
+public final class I18N {
 	// RESOURCE_BUNDLE_BASE_NAME vaut "net.bull.javamelody.resource.translations"
 	// ce qui charge net.bull.javamelody.resource.translations.properties
 	// et net.bull.javamelody.resource.translations_fr.properties
@@ -237,7 +237,7 @@ final class I18N {
 		return durationFormat;
 	}
 
-	static String getCurrentDate() {
+	public static String getCurrentDate() {
 		return createDateFormat().format(new Date());
 	}
 

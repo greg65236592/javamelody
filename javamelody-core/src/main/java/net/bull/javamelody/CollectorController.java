@@ -52,6 +52,7 @@ import static net.bull.javamelody.HttpParameters.WEB_XML_PART;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.Serializable;
 import java.net.URL;
@@ -65,6 +66,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.Part;
 
 import org.apache.log4j.Logger;
 
@@ -101,6 +103,65 @@ class CollectorController { // NOPMD
 		}
 		final List<URL> urls = Parameters.parseUrl(appUrls);
 		collectorServer.addCollectorApplication(appName, urls);
+	}
+
+	@SuppressWarnings("unchecked")
+	void pushApplicationData(HttpServletRequest req, HttpServletResponse resp) {
+
+		String appName = req.getParameter(HttpParameters.APPLICATION);
+
+		Part filePart = null;
+		try {
+			filePart = req.getPart("file");
+		} catch (IOException e2) {
+			// TODO Auto-generated catch block
+			e2.printStackTrace();
+		} catch (ServletException e2) {
+			// TODO Auto-generated catch block
+			e2.printStackTrace();
+		}
+
+		if (appName != null && filePart != null) {
+
+			try {
+				addCollectorApplication(appName, "http://localhost:8080/cms-cm-su/");
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+				LOGGER.error("Add app failed.", e1);
+			}
+			InputStream is = null;
+			try {
+				is = filePart.getInputStream();
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			final List<JavaInformations> javaInfosList = new ArrayList<>();
+			final Map<JavaInformations, List<CounterRequestContext>> counterRequestContextsByJavaInformations = new HashMap<JavaInformations, List<CounterRequestContext>>();
+			List<Serializable> serialized = null;
+			final List<Counter> counters = new ArrayList<>();
+			final StringBuilder sb = new StringBuilder();
+			try {
+				serialized = (List<Serializable>) LabradorRetriever
+						.readFromInputStream(req.getContentType(), null, is);
+			} catch (ClassNotFoundException | IOException e) {
+				LOGGER.error("Cast push request to Serializable list failed.", e);
+			}
+			RemoteCollector.dispatchSerializables(serialized, counters, javaInfosList,
+					counterRequestContextsByJavaInformations, appName, sb);
+			RemoteCollector.addRequestsAndErrors(collectorServer.getCollectorByApplication(appName),
+					counters);
+
+		} else {
+			resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+			try {
+				resp.getWriter().write("No application name provided.");
+			} catch (IOException e) {
+				LOGGER.error(e);
+			}
+		}
+
 	}
 
 	void doMonitoring(HttpServletRequest req, HttpServletResponse resp, String application)
@@ -508,7 +569,7 @@ class CollectorController { // NOPMD
 		// on utilise un cookie client pour stocker l'application
 		// car la page html est faite pour une seule application sans passer son nom en paramètre des requêtes
 		// et pour ne pas perdre l'application choisie entre les reconnexions
-		String application = req.getParameter("application");
+		String application = req.getParameter(HttpParameters.APPLICATION);
 		if (application == null) {
 			// pas de paramètre application dans la requête, on cherche le cookie
 			final Cookie cookie = httpCookieManager.getCookieByName(req, COOKIE_NAME);

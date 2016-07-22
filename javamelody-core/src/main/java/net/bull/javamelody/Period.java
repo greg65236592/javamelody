@@ -23,7 +23,7 @@ import java.util.Locale;
  * Énumération des périodes possibles.
  * @author Emeric Vernat
  */
-enum Period {
+public enum Period {
 	/** Jour. */
 	JOUR(1, "calendar_view_day.png", "day"),
 	/** Semaine. */

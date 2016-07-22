@@ -23,6 +23,7 @@ import java.io.StreamCorruptedException;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
+import javax.servlet.annotation.MultipartConfig;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -34,6 +35,7 @@ import org.apache.log4j.Logger;
  * Servlet de collecte utilisée uniquement pour serveur de collecte séparé de l'application monitorée.
  * @author Emeric Vernat
  */
+@MultipartConfig
 public class CollectorServlet extends HttpServlet {
 	private static final long serialVersionUID = -2070469677921953224L;
 
@@ -78,6 +80,7 @@ public class CollectorServlet extends HttpServlet {
 
 		final long start = System.currentTimeMillis();
 		final CollectorController collectorController = new CollectorController(collectorServer);
+
 		final String application = collectorController.getApplication(req, resp);
 		I18N.bindLocale(req.getLocale());
 		try {
@@ -117,6 +120,14 @@ public class CollectorServlet extends HttpServlet {
 		final String appUrls = req.getParameter(Parameter.REQ_PARA_APPURLS.getCode());
 		I18N.bindLocale(req.getLocale());
 		final CollectorController collectorController = new CollectorController(collectorServer);
+		// If push data from applications
+		System.out.println(req.getContextPath());
+		System.out.println(req.getRequestURI());
+		System.out.println(req.getServletPath());
+		String queryString = req.getRequestURI().replace(req.getContextPath(), "");
+		if (queryString != null && queryString.equals(Parameters.getDefaultPushingPath())) {
+			collectorController.pushApplicationData(req, resp);
+		}
 		try {
 			if (appName == null || appUrls == null) {
 				writeMessage(req, resp, collectorController, I18N.getString("donnees_manquantes"));

@@ -140,7 +140,7 @@ class CollectorServer {
 				LOGGER.warn(e.toString(), e);
 				final boolean becameUnavailable = !lastCollectExceptionsByApplication
 						.containsKey(application);
-				lastCollectExceptionsByApplication.put(application, e);
+				//				lastCollectExceptionsByApplication.put(application, e); TODO
 
 				if (becameUnavailable) {
 					final String subject = "The application " + application

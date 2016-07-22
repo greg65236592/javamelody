@@ -79,11 +79,11 @@ class RemoteCollector {
 			final List<Counter> counters = new ArrayList<Counter>();
 			final List<Serializable> serialized = createRemoteCall(url).collectData();
 			dispatchSerializables(serialized, counters, javaInfosList,
-					counterRequestContextsByJavaInformations, sb);
+					counterRequestContextsByJavaInformations, application, sb);
 			if (this.collector == null || aggregationDisabled) {
 				this.collector = new Collector(application, counters);
 			} else {
-				addRequestsAndErrors(counters);
+				addRequestsAndErrors(collector, counters);
 			}
 		}
 		this.javaInformationsList = javaInfosList;
@@ -97,10 +97,10 @@ class RemoteCollector {
 		return messageForReport;
 	}
 
-	private void dispatchSerializables(List<Serializable> serialized, List<Counter> counters,
+	public static void dispatchSerializables(List<Serializable> serialized, List<Counter> counters,
 			List<JavaInformations> javaInfosList,
 			Map<JavaInformations, List<CounterRequestContext>> counterRequestContextsByJavaInformations,
-			StringBuilder sb) {
+			String application, StringBuilder sb) {
 		JavaInformations latestJavaInformations = null;
 		final List<CounterRequestContext> counterRequestContextsList = new ArrayList<CounterRequestContext>();
 		for (final Serializable serializable : serialized) {
@@ -285,7 +285,7 @@ class RemoteCollector {
 		return createRemoteCall(url).collectSqlRequestExplainPlan(sqlRequest);
 	}
 
-	private void addRequestsAndErrors(List<Counter> counters) {
+	public static void addRequestsAndErrors(Collector collector, List<Counter> counters) {
 		for (final Counter newCounter : counters) {
 			final Counter counter = collector.getCounterByName(newCounter.getName());
 			// counter.isDisplayed() peut changer pour spring, ejb ou services selon l'utilisation

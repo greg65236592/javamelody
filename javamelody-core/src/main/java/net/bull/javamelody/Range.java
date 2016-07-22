@@ -29,7 +29,7 @@ import java.util.Date;
  * soit une période personnalisée entre une date de début et une date de fin.
  * @author Emeric Vernat
  */
-final class Range implements Serializable {
+public final class Range implements Serializable {
 	static final char CUSTOM_PERIOD_SEPARATOR = '|';
 
 	private static final long serialVersionUID = 4658258882827669495L;
@@ -42,7 +42,7 @@ final class Range implements Serializable {
 
 	private final Date endDate;
 
-	private Range(Period period, Date startDate, Date endDate) {
+	public Range(Period period, Date startDate, Date endDate) {
 		super();
 		assert period != null && startDate == null && endDate == null || period == null
 				&& startDate != null && endDate != null && startDate.getTime() <= endDate.getTime();

@@ -9,6 +9,8 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
@@ -56,7 +58,9 @@ public class CentralizedServerNotificationListener implements ServletContextList
 	 * {@link javax.servlet.ServletContextListener#contextInitialized(ServletContextEvent)} 
 	 * and server start time.
 	 */
-	protected static final int NOTIFY_DELAYS = 30000;
+	protected static final int NOTIFY_DELAYS = 30 * 1000;
+
+	protected static final int REGISTER_PERIOD = 30 * 1000;
 
 	private static final String IP_WEB_SERVICE_URL = "http://checkip.amazonaws.com";
 
@@ -68,7 +72,9 @@ public class CentralizedServerNotificationListener implements ServletContextList
 	public void contextInitialized(ServletContextEvent e) {
 		LOGGER.info("CentralizedServerNotificationListener initialzing...");
 		initializeParameters(e);
-		new CallMasterThread().start();
+		Timer time = new Timer(); // Instantiate Timer Object
+		CallMasterThread callCollectionServerTask = new CallMasterThread();
+		time.schedule(callCollectionServerTask, NOTIFY_DELAYS, REGISTER_PERIOD);
 	}
 
 	/** {@inheritDoc} */
@@ -78,57 +84,63 @@ public class CentralizedServerNotificationListener implements ServletContextList
 	}
 
 	private void initializeParameters(ServletContextEvent e) {
-		// Init centralized server host
-		centralizedServerAddress = e.getServletContext()
-				.getInitParameter(Parameter.CENTRALIZED_SERVER_HOST.getCode());
-		// Init centralized server port
-		if (e.getServletContext()
-				.getInitParameter(Parameter.CENTRALIZED_SERVER_PORT.getCode()) != null) {
-			centralizedServerPort = e.getServletContext()
-					.getInitParameter(Parameter.CENTRALIZED_SERVER_PORT.getCode());
-		}
-		// Init centralized server context path
-		if (e.getServletContext()
-				.getInitParameter(Parameter.CENTRALIZED_SERVER_CONTEXT_PATH.getCode()) != null) {
-			centralizedServerContextPath = e.getServletContext()
-					.getInitParameter(Parameter.CENTRALIZED_SERVER_CONTEXT_PATH.getCode());
-		}
-		// Init app name
-		appName = e.getServletContext().getInitParameter(Parameter.APP_NAME.getCode());
-		// Init app port
-		if (e.getServletContext().getInitParameter(Parameter.APP_PORT.getCode()) != null) {
-			appPort = e.getServletContext().getInitParameter(Parameter.APP_PORT.getCode());
-		}
-		// Init app context path
-		appContextPath = e.getServletContext().getContextPath();
-		// Init app host
-		if (e.getServletContext().getInitParameter(Parameter.USE_PUBLIC_IP.getCode()) != null) {
-			usePublicIp = new Boolean(
-					e.getServletContext().getInitParameter(Parameter.USE_PUBLIC_IP.getCode()));
-		}
-		if (e.getServletContext().getInitParameter(Parameter.APP_HOST.getCode()) != null) {
-			appAddress = e.getServletContext().getInitParameter(Parameter.APP_HOST.getCode());
-		}
-		if (usePublicIp) {
-			try {
-				URL whatismyip = new URL(IP_WEB_SERVICE_URL);
-				BufferedReader in = new BufferedReader(
-						new InputStreamReader(whatismyip.openStream()));
-				appAddress = in.readLine();
-			} catch (IOException e1) {
-				LOGGER.error("Get instance public ip failed!", e1);
+		try {
+			// Init centralized server host
+			centralizedServerAddress = e.getServletContext()
+					.getInitParameter(Parameter.CENTRALIZED_SERVER_HOST.getCode());
+			// Init centralized server port
+			if (e.getServletContext()
+					.getInitParameter(Parameter.CENTRALIZED_SERVER_PORT.getCode()) != null) {
+				centralizedServerPort = e.getServletContext()
+						.getInitParameter(Parameter.CENTRALIZED_SERVER_PORT.getCode());
 			}
-		} else if (!usePublicIp && appAddress == "") {
-			try {
-				InetAddress i = InetAddress.getLocalHost();
-				appAddress = i.getHostAddress();
-			} catch (UnknownHostException e1) {
-				LOGGER.error("Get instance internal ip failed!", e1);
+			// Init centralized server context path
+			if (e.getServletContext().getInitParameter(
+					Parameter.CENTRALIZED_SERVER_CONTEXT_PATH.getCode()) != null) {
+				centralizedServerContextPath = e.getServletContext()
+						.getInitParameter(Parameter.CENTRALIZED_SERVER_CONTEXT_PATH.getCode());
 			}
+			// Init app name
+			appName = e.getServletContext().getInitParameter(Parameter.APP_NAME.getCode());
+			// Init app port
+			if (e.getServletContext().getInitParameter(Parameter.APP_PORT.getCode()) != null) {
+				appPort = e.getServletContext().getInitParameter(Parameter.APP_PORT.getCode());
+			}
+			// Init app context path
+			appContextPath = e.getServletContext().getContextPath();
+			// Init app host
+			if (e.getServletContext().getInitParameter(Parameter.USE_PUBLIC_IP.getCode()) != null) {
+				usePublicIp = new Boolean(
+						e.getServletContext().getInitParameter(Parameter.USE_PUBLIC_IP.getCode()));
+			}
+			if (e.getServletContext().getInitParameter(Parameter.APP_HOST.getCode()) != null) {
+				appAddress = e.getServletContext().getInitParameter(Parameter.APP_HOST.getCode());
+			}
+			if (usePublicIp) {
+				try {
+					URL whatismyip = new URL(IP_WEB_SERVICE_URL);
+					BufferedReader in = new BufferedReader(
+							new InputStreamReader(whatismyip.openStream()));
+					appAddress = in.readLine();
+				} catch (IOException e1) {
+					LOGGER.error("Get instance public ip failed!", e1);
+				}
+			} else if (!usePublicIp && appAddress == "") {
+				try {
+					InetAddress i = InetAddress.getLocalHost();
+					appAddress = i.getHostAddress();
+				} catch (UnknownHostException e1) {
+					LOGGER.error("Get instance internal ip failed!", e1);
+				}
+			}
+		} catch (Exception e1) {
+			LOGGER.error(
+					"Initialize parameters failed, check your listener and context parameter configuation.",
+					e1);
 		}
 	}
 
-	private class CallMasterThread extends Thread {
+	private class CallMasterThread extends TimerTask {
 
 		private final Logger LOGGER_INNER = LoggerFactory.getLogger(CallMasterThread.class);
 
@@ -137,11 +149,6 @@ public class CentralizedServerNotificationListener implements ServletContextList
 
 		@Override
 		public void run() {
-			try {
-				Thread.sleep(NOTIFY_DELAYS);
-			} catch (InterruptedException e1) {
-				LOGGER_INNER.error("CallMasterThread waiting failed!", e1);
-			}
 			try {
 				callMasterServer();
 			} catch (Exception e) {

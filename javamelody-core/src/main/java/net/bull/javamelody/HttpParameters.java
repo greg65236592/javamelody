@@ -21,7 +21,7 @@ package net.bull.javamelody;
  * Paramètres des requêtes http.
  * @author Emeric Vernat
  */
-final class HttpParameters {
+public final class HttpParameters {
 	static final String HTML_CHARSET = "UTF-8";
 	static final String HTML_CONTENT_TYPE = "text/html; charset=" + HTML_CHARSET;
 	static final String TEXT_CONTENT_TYPE = "text/plain; charset=" + HTML_CHARSET;
@@ -39,7 +39,7 @@ final class HttpParameters {
 	static final String COUNTER_PARAMETER = "counter";
 	static final String GRAPH_PARAMETER = "graph";
 	static final String RESOURCE_PARAMETER = "resource";
-	static final String FORMAT_PARAMETER = "format";
+	public static final String FORMAT_PARAMETER = "format";
 	static final String HTML_BODY_FORMAT = "htmlbody";
 	static final String WIDTH_PARAMETER = "width";
 	static final String HEIGHT_PARAMETER = "height";
@@ -72,6 +72,7 @@ final class HttpParameters {
 	static final String OTHER_JROBINS_PART = "otherJRobins";
 	static final String EXPLAIN_PLAN_PART = "explainPlan";
 	static final String APPLICATIONS_PART = "applications";
+	public static final String APPLICATION = "application";
 
 	/**
 	 * Constructeur privé: pas d'instance.

@@ -46,7 +46,7 @@ import javax.sql.DataSource;
  * Les instances sont sérialisables pour pouvoir être transmises au serveur de collecte.
  * @author Emeric Vernat
  */
-class JavaInformations implements Serializable { // NOPMD
+public class JavaInformations implements Serializable { // NOPMD
 	static final double HIGH_USAGE_THRESHOLD_IN_PERCENTS = 95d;
 	private static final long serialVersionUID = 3281861236369720876L;
 	private static final Date START_DATE = new Date();
@@ -131,7 +131,7 @@ class JavaInformations implements Serializable { // NOPMD
 	}
 
 	// CHECKSTYLE:OFF
-	JavaInformations(ServletContext servletContext, boolean includeDetails) {
+	public JavaInformations(ServletContext servletContext, boolean includeDetails) {
 		// CHECKSTYLE:ON
 		super();
 		memoryInformations = new MemoryInformations();

@@ -275,14 +275,19 @@ class LabradorRetriever {
 	 */
 	private static Serializable read(URLConnection connection, InputStream inputStream)
 			throws IOException, ClassNotFoundException {
+		return readFromInputStream(connection.getContentType(), connection.getContentEncoding(),
+				inputStream);
+	}
+
+	public static Serializable readFromInputStream(String contentType, String contentEncoding,
+			InputStream inputStream) throws IOException, ClassNotFoundException {
 		InputStream input = inputStream;
 		try {
-			if ("gzip".equals(connection.getContentEncoding())) {
+			if ("gzip".equals(contentEncoding)) {
 				// si la taille du flux dépasse x Ko et que l'application a retourné un flux compressé
 				// alors on le décompresse
 				input = new GZIPInputStream(input);
 			}
-			final String contentType = connection.getContentType();
 			final TransportFormat transportFormat;
 			if (contentType != null) {
 				if (contentType.startsWith("text/xml")) {
@@ -298,11 +303,7 @@ class LabradorRetriever {
 			}
 			return transportFormat.readSerializableFrom(input);
 		} finally {
-			try {
-				input.close();
-			} finally {
-				close(connection);
-			}
+			input.close();
 		}
 	}
 

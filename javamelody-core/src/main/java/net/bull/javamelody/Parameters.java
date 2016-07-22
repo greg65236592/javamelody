@@ -40,13 +40,14 @@ import javax.servlet.ServletContext;
  * Classe d'accès aux paramètres du monitoring.
  * @author Emeric Vernat
  */
-final class Parameters {
+public final class Parameters {
 	static final String PARAMETER_SYSTEM_PREFIX = "javamelody.";
 	static final File TEMPORARY_DIRECTORY = new File(System.getProperty("java.io.tmpdir"));
 	static final String JAVA_VERSION = System.getProperty("java.version");
 	static final String JAVAMELODY_VERSION = getJavaMelodyVersion();
 	// default monitoring-path is "/monitoring" in the http URL
 	private static final String DEFAULT_MONITORING_PATH = "/monitoring";
+	private static final String DEFAULT_PUSHING_PATH = "/psuhing_app_data";
 	// résolution (ou pas) par défaut en s de stockage des valeurs dans les fichiers RRD
 	private static final int DEFAULT_RESOLUTION_SECONDS = 60;
 	// stockage des fichiers RRD de JRobin dans le répertoire temp/javamelody/<context> par défaut
@@ -271,7 +272,7 @@ final class Parameters {
 	/**
 	 * @return Résolution en secondes des courbes et période d'appels par le serveur de collecte le cas échéant.
 	 */
-	static int getResolutionSeconds() {
+	public static int getResolutionSeconds() {
 		final String param = getParameter(Parameter.RESOLUTION_SECONDS);
 		if (param != null) {
 			// lance une NumberFormatException si ce n'est pas un nombre
@@ -460,5 +461,9 @@ final class Parameters {
 			}
 		}
 		return null;
+	}
+
+	public static String getDefaultPushingPath() {
+		return DEFAULT_PUSHING_PATH;
 	}
 }

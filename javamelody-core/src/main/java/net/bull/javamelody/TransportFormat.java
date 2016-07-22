@@ -42,7 +42,7 @@ import com.thoughtworks.xstream.io.xml.CompactWriter;
  * (hors protocole à priori http).
  * @author Emeric Vernat
  */
-enum TransportFormat {
+public enum TransportFormat {
 	/**
 	 * Sérialisation java.
 	 */
@@ -176,7 +176,7 @@ enum TransportFormat {
 		this.code = this.toString().toLowerCase(Locale.ENGLISH);
 	}
 
-	static TransportFormat valueOfIgnoreCase(String transportFormat) {
+	public static TransportFormat valueOfIgnoreCase(String transportFormat) {
 		return valueOf(transportFormat.toUpperCase(Locale.ENGLISH).trim());
 	}
 
@@ -202,15 +202,15 @@ enum TransportFormat {
 		}
 	}
 
-	String getCode() {
+	public String getCode() {
 		return code;
 	}
 
-	String getMimeType() {
+	public String getMimeType() {
 		return mimeType;
 	}
 
-	void checkDependencies() throws IOException {
+	public void checkDependencies() throws IOException {
 		if (this == XML || this == JSON) {
 			try {
 				Class.forName("com.thoughtworks.xstream.XStream");

@@ -280,6 +280,11 @@ public enum Parameter {
 	MONITORING_PATH("monitoring-path"),
 
 	/**
+	 * URL for pushing app data.
+	 */
+	PUSHING_PATH("pushing-path"),
+
+	/**
 	 * Identifiant de suivi google analytics s'il y a lieu (désactivé par défaut).
 	 */
 	ANALYTICS_ID("analytics-id"),
@@ -355,7 +360,12 @@ public enum Parameter {
 	/**
 	 * Used when add app to collect server.
 	 */
-	REQ_PARA_APPURLS("appUrls");
+	REQ_PARA_APPURLS("appUrls"),
+
+	/**
+	 * Get public ip of application webservice's url.
+	 */
+	IP_WEBSERVICE_URL("ip-webservice-url");
 
 	private final String code;
 

@@ -18,6 +18,7 @@
 package net.bull.javamelody;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -116,8 +117,23 @@ class CollectorServer {
 		}
 	}
 
+	String collectPushData(String appName, String contentType, InputStream is) {
+		final boolean remoteCollectorAvailable = isApplicationDataAvailable(appName);
+		final RemoteCollector remoteCollector;
+		if (!remoteCollectorAvailable) {
+			remoteCollector = new RemoteCollector(appName);
+		} else {
+			remoteCollector = getRemoteCollectorByApplication(appName);
+		}
+		return remoteCollector.collectPushData(contentType, is);
+	}
+
 	String collectForApplicationForAction(String application, List<URL> urls) throws IOException {
-		return collectForApplication(new RemoteCollector(application, urls));
+		if (urls != null && urls.size() > 0) {
+			return collectForApplication(new RemoteCollector(application, urls));
+		}
+		//If collect push data.
+		return "";
 	}
 
 	void collectForApplicationWithoutErrors(String application, List<URL> urls) {
@@ -182,12 +198,39 @@ class CollectorServer {
 		return messageForReport;
 	}
 
+	String collectForApplication(String application, String contentType, InputStream is)
+			throws IOException {
+		final boolean remoteCollectorAvailable = isApplicationDataAvailable(application);
+		final RemoteCollector remoteCollector;
+		if (!remoteCollectorAvailable) {
+			remoteCollector = new RemoteCollector(application);
+		} else {
+			remoteCollector = getRemoteCollectorByApplication(application);
+		}
+
+		final String messageForReport = collectPushData(application, contentType, is);
+
+		if (!remoteCollectorAvailable) {
+			// on initialise les remoteCollectors au fur et à mesure
+			// puisqu'on ne peut pas forcément au démarrage
+			// car la webapp à monitorer peut être indisponible
+			remoteCollectorsByApplication.put(application, remoteCollector);
+
+			if (Parameters.getParameter(Parameter.MAIL_SESSION) != null
+					&& Parameters.getParameter(Parameter.ADMIN_EMAILS) != null) {
+				scheduleReportMailForCollectorServer(application);
+				LOGGER.info("Periodic report scheduled for the application " + application + " to "
+						+ Parameters.getParameter(Parameter.ADMIN_EMAILS));
+			}
+		}
+		return messageForReport;
+	}
+
 	private String collectForApplication(RemoteCollector remoteCollector) throws IOException {
 		final String application = remoteCollector.getApplication();
 		final List<URL> urls = remoteCollector.getURLs();
 		LOGGER.info("collect for the application " + application + " on " + urls);
 		assert application != null;
-		assert urls != null;
 		final long start = System.currentTimeMillis();
 
 		final String messageForReport = remoteCollector.collectData();
@@ -279,6 +322,13 @@ class CollectorServer {
 		}
 		collectForApplication(application, urls);
 		Parameters.addCollectorApplication(application, urls);
+	}
+
+	void addPushApplication(String application, String contentType, InputStream is)
+			throws IOException {
+		collectForApplication(application, contentType, is);
+		Parameters.addCollectorApplication(application);
+		Parameters.updatePushAppTimeTable(application);
 	}
 
 	void removeCollectorApplication(String application) throws IOException {

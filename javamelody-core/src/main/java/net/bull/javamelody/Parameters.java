@@ -28,6 +28,8 @@ import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -40,13 +42,16 @@ import javax.servlet.ServletContext;
  * Classe d'accès aux paramètres du monitoring.
  * @author Emeric Vernat
  */
-final class Parameters {
+public final class Parameters {
 	static final String PARAMETER_SYSTEM_PREFIX = "javamelody.";
 	static final File TEMPORARY_DIRECTORY = new File(System.getProperty("java.io.tmpdir"));
 	static final String JAVA_VERSION = System.getProperty("java.version");
 	static final String JAVAMELODY_VERSION = getJavaMelodyVersion();
 	// default monitoring-path is "/monitoring" in the http URL
 	private static final String DEFAULT_MONITORING_PATH = "/monitoring";
+	// default pushing-path is "/psuhing_app_data" in the http URL
+	private static final String DEFAULT_PUSHING_PATH = "/psuhing_app_data";
+	private static final String DEFAULT_IP_WEBSERVICE_URL = "http://checkip.amazonaws.com";
 	// résolution (ou pas) par défaut en s de stockage des valeurs dans les fichiers RRD
 	private static final int DEFAULT_RESOLUTION_SECONDS = 60;
 	// stockage des fichiers RRD de JRobin dans le répertoire temp/javamelody/<context> par défaut
@@ -54,6 +59,7 @@ final class Parameters {
 	// nom du fichier stockant les applications et leurs urls dans le répertoire de stockage
 	private static final String COLLECTOR_APPLICATIONS_FILENAME = "applications.properties";
 	private static Map<String, List<URL>> urlsByApplications;
+	private static Map<String, Date> pushAppTimeTable;
 
 	private static FilterConfig filterConfig;
 	private static ServletContext servletContext;
@@ -125,6 +131,16 @@ final class Parameters {
 		writeCollectorApplications();
 	}
 
+	static void addCollectorApplication(String application) throws IOException {
+		assert application != null;
+		// initialisation si besoin
+		getCollectorUrlsByApplications();
+
+		urlsByApplications.put(application, null);
+		//Don't write to file.
+		//		writeCollectorApplications();
+	}
+
 	static void removeCollectorApplication(String application) throws IOException {
 		assert application != null;
 		// initialisation si besoin
@@ -162,6 +178,13 @@ final class Parameters {
 		} finally {
 			output.close();
 		}
+	}
+
+	static void updatePushAppTimeTable(String name) {
+		if (pushAppTimeTable == null) {
+			pushAppTimeTable = new HashMap<>();
+		}
+		pushAppTimeTable.put(name, new Date());
 	}
 
 	private static void readCollectorApplications() throws IOException {
@@ -227,6 +250,14 @@ final class Parameters {
 		return parameterValue;
 	}
 
+	public static String getPushingPath() {
+		final String parameterValue = getParameter(Parameter.PUSHING_PATH);
+		if (parameterValue == null) {
+			return DEFAULT_PUSHING_PATH;
+		}
+		return parameterValue;
+	}
+
 	/**
 	 * @return nom réseau de la machine
 	 */
@@ -271,7 +302,7 @@ final class Parameters {
 	/**
 	 * @return Résolution en secondes des courbes et période d'appels par le serveur de collecte le cas échéant.
 	 */
-	static int getResolutionSeconds() {
+	public static int getResolutionSeconds() {
 		final String param = getParameter(Parameter.RESOLUTION_SECONDS);
 		if (param != null) {
 			// lance une NumberFormatException si ce n'est pas un nombre
@@ -283,6 +314,20 @@ final class Parameters {
 			return result;
 		}
 		return DEFAULT_RESOLUTION_SECONDS;
+	}
+
+	/**
+	 * @return The web service url for getting application's public ip address.
+	 */
+	public static String getIpWebserviceUrl() {
+		final String param = getParameter(Parameter.IP_WEBSERVICE_URL);
+		if (param != null) {
+			if ("".equals(param)) {
+				throw new IllegalStateException("The parameter ip-webservice-url can't be empty");
+			}
+			return param;
+		}
+		return DEFAULT_IP_WEBSERVICE_URL;
 	}
 
 	/**
@@ -309,6 +354,23 @@ final class Parameters {
 		}
 		if (servletContext != null) {
 			return new File(directory + '/' + application);
+		}
+		return new File(directory);
+	}
+
+	public static File getStorageRootDirectory() {
+		final String param = getParameter(Parameter.STORAGE_DIRECTORY);
+		final String dir;
+		if (param == null) {
+			dir = DEFAULT_DIRECTORY;
+		} else {
+			dir = param;
+		}
+		final String directory;
+		if (dir.length() > 0 && new File(dir).isAbsolute()) {
+			directory = dir;
+		} else {
+			directory = TEMPORARY_DIRECTORY.getPath() + '/' + dir;
 		}
 		return new File(directory);
 	}

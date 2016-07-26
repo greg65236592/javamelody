@@ -13,6 +13,12 @@
 		<servlet-name>monitoringServer</servlet-name>
 		<servlet-class>net.bull.javamelody.CollectorServlet</servlet-class>
 		<load-on-startup>1</load-on-startup>
+		<multipart-config>
+		    <location>/tmp</location>
+		    <max-file-size>20848820</max-file-size>
+		    <max-request-size>418018841</max-request-size>
+		    <file-size-threshold>1048576</file-size-threshold>
+		</multipart-config>
 	</servlet>
 	<servlet-mapping>
 		<servlet-name>monitoringServer</servlet-name>

@@ -52,6 +52,7 @@ import static net.bull.javamelody.HttpParameters.WEB_XML_PART;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.Serializable;
 import java.net.URL;
@@ -60,11 +61,13 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.Part;
 
 import org.apache.log4j.Logger;
 
@@ -158,6 +161,64 @@ class CollectorController { // NOPMD
 		} catch (final Exception e) {
 			writeMessage(req, resp, application, e.getMessage());
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	void pushApplicationData(HttpServletRequest req, HttpServletResponse resp) {
+
+		String appName = req.getParameter(HttpParameters.APPLICATION);
+
+		Part filePart = null;
+		try {
+			filePart = req.getPart("file");
+		} catch (IOException e2) {
+			LOGGER.error(e2);
+		} catch (ServletException e2) {
+			LOGGER.error(e2);
+		}
+
+		if (appName != null && filePart != null) {
+			InputStream is = null;
+			try {
+				is = filePart.getInputStream();
+			} catch (IOException e1) {
+				LOGGER.error(e1);
+			}
+
+			Map<String, List<URL>> collectorUrlsByApplications = null;
+			try {
+				collectorUrlsByApplications = Parameters.getCollectorUrlsByApplications();
+			} catch (IOException e) {
+				LOGGER.error(e);
+			}
+			Set<String> apps = collectorUrlsByApplications.keySet();
+			boolean isAppMonitored = false;
+			for (String monitoredAppName : apps) {
+				if (monitoredAppName.equals(appName)) {
+					LOG.info(appName + " is already been monitored, skip adding process.");
+					Parameters.updatePushAppTimeTable(appName);
+					isAppMonitored = true;
+				}
+			}
+			if (!isAppMonitored) {
+				try {
+					collectorServer.addPushApplication(appName, filePart.getContentType(), is);
+				} catch (IOException e1) {
+					LOGGER.error("Add app failed.", e1);
+				}
+			} else {
+				collectorServer.collectPushData(appName, filePart.getContentType(), is);
+			}
+
+		} else {
+			resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+			try {
+				resp.getWriter().write("No application name provided.");
+			} catch (IOException e) {
+				LOGGER.error(e);
+			}
+		}
+
 	}
 
 	private void doReport(HttpServletRequest req, HttpServletResponse resp, String application)

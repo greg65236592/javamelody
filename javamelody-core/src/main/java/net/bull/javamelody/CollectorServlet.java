@@ -50,6 +50,10 @@ public class CollectorServlet extends HttpServlet {
 	@Override
 	public void init(ServletConfig config) throws ServletException {
 		super.init(config);
+
+		LOGGER.info(
+				"JavaMelody stroage root path: " + Parameters.getStorageRootDirectory().getPath());
+
 		Parameters.initialize(config.getServletContext());
 		if (!Boolean.parseBoolean(Parameters.getParameter(Parameter.LOG))) {
 			// si log désactivé dans serveur de collecte,
@@ -118,6 +122,13 @@ public class CollectorServlet extends HttpServlet {
 		I18N.bindLocale(req.getLocale());
 		final CollectorController collectorController = new CollectorController(collectorServer);
 		try {
+
+			// If push data from applications
+			String queryString = req.getRequestURI().replace(req.getContextPath(), "");
+			if (queryString != null && queryString.equals(Parameters.getPushingPath())) {
+				collectorController.pushApplicationData(req, resp);
+			}
+
 			if (appName == null || appUrls == null) {
 				writeMessage(req, resp, collectorController, I18N.getString("donnees_manquantes"));
 				return;

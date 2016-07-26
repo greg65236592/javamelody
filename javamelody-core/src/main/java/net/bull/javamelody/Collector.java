@@ -38,7 +38,7 @@ import net.bull.javamelody.SamplingProfiler.SampledMethod;
  * Collecteur de données sur les compteurs, avec son propre thread, pour remplir les courbes.
  * @author Emeric Vernat
  */
-class Collector { // NOPMD
+public class Collector { // NOPMD
 	// période entre 2 collectes en milli-secondes
 	private final int periodMillis;
 	private final String application;
@@ -973,4 +973,5 @@ class Collector { // NOPMD
 		return getClass().getSimpleName() + "[application=" + getApplication() + ", periodMillis="
 				+ periodMillis + ", counters=" + getCounters() + ']';
 	}
+
 }

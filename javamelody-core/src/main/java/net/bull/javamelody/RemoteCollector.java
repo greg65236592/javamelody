@@ -21,6 +21,7 @@ import static net.bull.javamelody.HttpParameters.DEFAULT_WITH_CURRENT_REQUESTS_P
 import static net.bull.javamelody.HttpParameters.PART_PARAMETER;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Serializable;
 import java.net.URL;
 import java.util.ArrayList;
@@ -58,8 +59,21 @@ class RemoteCollector {
 		this.urls = urls;
 	}
 
+	/**
+	 * Constructor, for push data applications, no url required.
+	 * @param application
+	 */
+	RemoteCollector(String application) {
+		super();
+		assert application != null;
+		this.application = application;
+	}
+
 	String collectData() throws IOException {
-		return collectDataWithUrls(urls);
+		if (urls != null && urls.size() > 0) {
+			return collectDataWithUrls(urls);
+		}
+		return null;
 	}
 
 	String collectDataIncludingCurrentRequests() throws IOException {
@@ -69,6 +83,37 @@ class RemoteCollector {
 					+ DEFAULT_WITH_CURRENT_REQUESTS_PART));
 		}
 		return collectDataWithUrls(urlsWithCurrentRequests);
+	}
+
+	@SuppressWarnings("unchecked")
+	String collectPushData(String contentType, InputStream is) {
+		final List<JavaInformations> javaInfosList = new ArrayList<>();
+		final Map<JavaInformations, List<CounterRequestContext>> counterRequestContextsByJavaInformations = new HashMap<>();
+		List<Serializable> serialized = null;
+		final List<Counter> counters = new ArrayList<>();
+		final StringBuilder sb = new StringBuilder();
+		try {
+			serialized = (List<Serializable>) LabradorRetriever.readFromInputStream(contentType,
+					null, is);
+		} catch (ClassNotFoundException | IOException e) {
+			LOG.warn("Cast push request to Serializable list failed.", e);
+		}
+		dispatchSerializables(serialized, counters, javaInfosList,
+				counterRequestContextsByJavaInformations, sb);
+		if (this.collector == null || aggregationDisabled) {
+			this.collector = new Collector(application, counters);
+		} else {
+			addRequestsAndErrors(counters);
+		}
+		this.javaInformationsList = javaInfosList;
+		this.currentRequests = counterRequestContextsByJavaInformations;
+		final String messageForReport;
+		if (sb.length() == 0) {
+			messageForReport = null;
+		} else {
+			messageForReport = sb.toString();
+		}
+		return messageForReport;
 	}
 
 	private String collectDataWithUrls(List<URL> urlsForCollect) throws IOException {

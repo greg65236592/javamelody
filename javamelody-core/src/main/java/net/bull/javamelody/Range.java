@@ -42,7 +42,7 @@ final class Range implements Serializable {
 
 	private final Date endDate;
 
-	private Range(Period period, Date startDate, Date endDate) {
+	Range(Period period, Date startDate, Date endDate) {
 		super();
 		assert period != null && startDate == null && endDate == null || period == null
 				&& startDate != null && endDate != null && startDate.getTime() <= endDate.getTime();

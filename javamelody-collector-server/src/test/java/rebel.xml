@@ -12,6 +12,11 @@
 			</dir>
 		</link>
 		<link target="/">
+			<dir name="/Users/greg/git/javamelody/javamelody-collector-server/target/m2e-wtp/web-resources">
+				<exclude name="/"/>
+			</dir>
+		</link>
+		<link target="/">
 			<dir name="/Users/greg/git/javamelody/javamelody-collector-server/src/main/webapp">
 				<exclude name="/"/>
 			</dir>

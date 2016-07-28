@@ -137,8 +137,7 @@ public final class Parameters {
 		getCollectorUrlsByApplications();
 
 		urlsByApplications.put(application, null);
-		//Don't write to file.
-		//		writeCollectorApplications();
+		writeCollectorApplications();
 	}
 
 	static void removeCollectorApplication(String application) throws IOException {
@@ -155,16 +154,18 @@ public final class Parameters {
 		final String monitoringPath = getMonitoringPath();
 		for (final Map.Entry<String, List<URL>> entry : urlsByApplications.entrySet()) {
 			final List<URL> urls = entry.getValue();
-			assert urls != null && !urls.isEmpty();
+			//assert urls != null && !urls.isEmpty(); Bypass push applications
 			final StringBuilder sb = new StringBuilder();
-			for (final URL url : urls) {
-				final String urlString = url.toString();
-				// on enlève le suffixe ajouté précédemment dans parseUrl
-				final String webappUrl = urlString.substring(0,
-						urlString.lastIndexOf(monitoringPath));
-				sb.append(webappUrl).append(',');
+			if (urls != null) {
+				for (final URL url : urls) {
+					final String urlString = url.toString();
+					// on enlève le suffixe ajouté précédemment dans parseUrl
+					final String webappUrl = urlString.substring(0,
+							urlString.lastIndexOf(monitoringPath));
+					sb.append(webappUrl).append(',');
+					sb.delete(sb.length() - 1, sb.length());
+				}
 			}
-			sb.delete(sb.length() - 1, sb.length());
 			properties.put(entry.getKey(), sb.toString());
 		}
 		final File collectorApplicationsFile = getCollectorApplicationsFile();
@@ -187,6 +188,13 @@ public final class Parameters {
 		pushAppTimeTable.put(name, new Date());
 	}
 
+	static Map<String, Date> getPushAppTimeTable() {
+		if (pushAppTimeTable == null) {
+			pushAppTimeTable = new HashMap<>();
+		}
+		return Collections.unmodifiableMap(pushAppTimeTable);
+	}
+
 	private static void readCollectorApplications() throws IOException {
 		// le fichier applications.properties contient les noms et les urls des applications à monitorer
 		// par ex.: recette=http://recette1:8080/myapp
@@ -207,7 +215,15 @@ public final class Parameters {
 			final List<String> propertyNames = (List<String>) Collections
 					.list(properties.propertyNames());
 			for (final String property : propertyNames) {
-				result.put(property, parseUrl(String.valueOf(properties.get(property))));
+				String url = String.valueOf(properties.get(property));
+				//Bypass push application
+				try {
+					result.put(property, parseUrl(url));
+				} catch (Exception e) {
+					LOG.info("Encounter null URL, put as push application. Ａpplication name: "
+							+ property);
+					result.put(property, null);
+				}
 			}
 		}
 		urlsByApplications = result;
@@ -218,6 +234,9 @@ public final class Parameters {
 	}
 
 	static List<URL> parseUrl(String value) throws MalformedURLException {
+		if (value == null || value.equals("")) {
+			return null;
+		}
 		// pour un cluster, le paramètre vaut "url1,url2"
 		final TransportFormat transportFormat;
 		if (Parameters.getParameter(Parameter.TRANSPORT_FORMAT) == null) {

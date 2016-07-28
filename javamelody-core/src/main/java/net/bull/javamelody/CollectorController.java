@@ -156,6 +156,7 @@ class CollectorController { // NOPMD
 
 			doReport(req, resp, application);
 		} catch (final RuntimeException e) {
+			LOG.debug("doMonitoring failed!", e);
 			// catch RuntimeException pour éviter warning exception
 			writeMessage(req, resp, application, e.getMessage());
 		} catch (final Exception e) {
@@ -575,11 +576,11 @@ class CollectorController { // NOPMD
 			final Cookie cookie = httpCookieManager.getCookieByName(req, COOKIE_NAME);
 			if (cookie != null) {
 				application = cookie.getValue();
-				if (!collectorServer.isApplicationDataAvailable(application)) {
-					cookie.setMaxAge(-1);
-					resp.addCookie(cookie);
-					application = null;
-				}
+				//				if (!collectorServer.isApplicationDataAvailable(application)) {
+				//					cookie.setMaxAge(-1);
+				//					resp.addCookie(cookie);
+				//					application = null;
+				//				}
 			}
 			if (application == null) {
 				// pas de cookie, on prend la première application si elle existe

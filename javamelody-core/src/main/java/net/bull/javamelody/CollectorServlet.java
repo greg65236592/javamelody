@@ -85,16 +85,17 @@ public class CollectorServlet extends HttpServlet {
 		final String application = collectorController.getApplication(req, resp);
 		I18N.bindLocale(req.getLocale());
 		try {
-			if (application == null) {
-				CollectorController.writeOnlyAddApplication(resp);
-				return;
-			}
-			if (!collectorServer.isApplicationDataAvailable(application)) {
-				resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-						"Data unavailable for the application "
-								+ I18N.htmlEncode(application, false));
-				return;
-			}
+			// Comment out below code is for making unavailable applications visible.
+			//			if (application == null) {
+			//				CollectorController.writeOnlyAddApplication(resp);
+			//				return;
+			//			}
+			//			if (!collectorServer.isApplicationDataAvailable(application)) {
+			//				resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+			//						"Data unavailable for the application "
+			//								+ I18N.htmlEncode(application, false));
+			//				return;
+			//			}
 			collectorController.doMonitoring(req, resp, application);
 		} finally {
 			I18N.unbindLocale();

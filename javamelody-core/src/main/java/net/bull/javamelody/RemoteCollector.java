@@ -67,6 +67,56 @@ class RemoteCollector {
 		super();
 		assert application != null;
 		this.application = application;
+		// RemoteCollector of 'push' application is different from normal RemoteController.
+		// As to give information at servlet startup, we need to create some empty instances to pass the init process.
+		List<Counter> counters = initEmptyCounters();
+		javaInformationsList = new ArrayList<>();
+		javaInformationsList.add(new JavaInformations(null, true));
+		if (this.collector == null || aggregationDisabled) {
+			this.collector = new Collector(application, counters);
+		} else {
+			addRequestsAndErrors(counters);
+		}
+		//On the servlet beginning, collect for push data application once, otherwise the init view of centralize server will be empty. 
+		collector.collectWithoutErrors(javaInformationsList);
+	}
+
+	private List<Counter> initEmptyCounters() {
+		List<Counter> counters = new ArrayList<>(); //TODO, remove collector server counter.
+		String BEANS_ICON_NAME = "beans.png";
+		Counter SERVICES_COUNTER = new Counter("services", BEANS_ICON_NAME,
+				JdbcWrapper.SINGLETON.getSqlCounter());
+		Counter EJB_COUNTER = new Counter("ejb", BEANS_ICON_NAME,
+				JdbcWrapper.SINGLETON.getSqlCounter());
+		Counter JPA_COUNTER = new Counter("jpa", "db.png", JdbcWrapper.SINGLETON.getSqlCounter());
+		Counter SPRING_COUNTER = new Counter("spring", BEANS_ICON_NAME,
+				JdbcWrapper.SINGLETON.getSqlCounter());
+		Counter GUICE_COUNTER = new Counter("guice", BEANS_ICON_NAME,
+				JdbcWrapper.SINGLETON.getSqlCounter());
+		Counter STRUTS_COUNTER = new Counter(Counter.STRUTS_COUNTER_NAME, "struts.png",
+				JdbcWrapper.SINGLETON.getSqlCounter());
+		Counter JSF_COUNTER = new Counter(Counter.JSF_COUNTER_NAME, "jsp.png",
+				JdbcWrapper.SINGLETON.getSqlCounter());
+		Counter LOG_COUNTER = new Counter(Counter.LOG_COUNTER_NAME, "log.png");
+		Counter JSP_COUNTER = new Counter(Counter.JSP_COUNTER_NAME, "jsp.png",
+				JdbcWrapper.SINGLETON.getSqlCounter());
+		Counter sqlCounter = JdbcWrapper.SINGLETON.getSqlCounter();
+		Counter httpCounter = new Counter(Counter.HTTP_COUNTER_NAME, "dbweb.png", sqlCounter);
+		Counter errorCounter = new Counter(Counter.ERROR_COUNTER_NAME, "error.png");
+		errorCounter.setMaxRequestsCount(250);
+		counters.add(SERVICES_COUNTER);
+		counters.add(EJB_COUNTER);
+		counters.add(JPA_COUNTER);
+		counters.add(SPRING_COUNTER);
+		counters.add(GUICE_COUNTER);
+		counters.add(STRUTS_COUNTER);
+		counters.add(JSF_COUNTER);
+		counters.add(LOG_COUNTER);
+		counters.add(JSP_COUNTER);
+		counters.add(sqlCounter);
+		counters.add(httpCounter);
+		counters.add(errorCounter);
+		return counters;
 	}
 
 	String collectData() throws IOException {
@@ -86,8 +136,8 @@ class RemoteCollector {
 	}
 
 	@SuppressWarnings("unchecked")
-	String collectPushData(String contentType, InputStream is) {
-		final List<JavaInformations> javaInfosList = new ArrayList<>();
+	String collectPushData(String contentType, InputStream is,
+			List<JavaInformations> javaInfosList) {
 		final Map<JavaInformations, List<CounterRequestContext>> counterRequestContextsByJavaInformations = new HashMap<>();
 		List<Serializable> serialized = null;
 		final List<Counter> counters = new ArrayList<>();

@@ -203,6 +203,14 @@ public final class Parameters {
 		// mais elles seront ordonnées lorsqu'elles seront mises dans cette TreeMap
 		final Map<String, List<URL>> result = new TreeMap<String, List<URL>>();
 		final File file = getCollectorApplicationsFile();
+		if (!file.exists()) { //It's been observed that the application file might be vanished due to unknown reason, as a failed save, render all application historical data directory and recreate the file.
+			File rootDir = getStorageDirectory("");
+			String[] appDataDirNames = rootDir.list();
+			file.createNewFile();
+			for (String appDataDirName : appDataDirNames) {
+				addCollectorApplication(appDataDirName);
+			}
+		}
 		if (file.exists()) {
 			final Properties properties = new Properties();
 			final FileInputStream input = new FileInputStream(file);

@@ -28,6 +28,8 @@ import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -40,13 +42,16 @@ import javax.servlet.ServletContext;
  * Classe d'accès aux paramètres du monitoring.
  * @author Emeric Vernat
  */
-final class Parameters {
+public final class Parameters {
 	static final String PARAMETER_SYSTEM_PREFIX = "javamelody.";
 	static final File TEMPORARY_DIRECTORY = new File(System.getProperty("java.io.tmpdir"));
 	static final String JAVA_VERSION = System.getProperty("java.version");
 	static final String JAVAMELODY_VERSION = getJavaMelodyVersion();
 	// default monitoring-path is "/monitoring" in the http URL
 	private static final String DEFAULT_MONITORING_PATH = "/monitoring";
+	// default pushing-path is "/psuhing_app_data" in the http URL
+	private static final String DEFAULT_PUSHING_PATH = "/psuhing_app_data";
+	private static final String DEFAULT_IP_WEBSERVICE_URL = "http://checkip.amazonaws.com";
 	// résolution (ou pas) par défaut en s de stockage des valeurs dans les fichiers RRD
 	private static final int DEFAULT_RESOLUTION_SECONDS = 60;
 	// stockage des fichiers RRD de JRobin dans le répertoire temp/javamelody/<context> par défaut
@@ -54,6 +59,7 @@ final class Parameters {
 	// nom du fichier stockant les applications et leurs urls dans le répertoire de stockage
 	private static final String COLLECTOR_APPLICATIONS_FILENAME = "applications.properties";
 	private static Map<String, List<URL>> urlsByApplications;
+	private static Map<String, Date> pushAppTimeTable;
 
 	private static FilterConfig filterConfig;
 	private static ServletContext servletContext;
@@ -125,6 +131,15 @@ final class Parameters {
 		writeCollectorApplications();
 	}
 
+	static void addCollectorApplication(String application) throws IOException {
+		assert application != null;
+		// initialisation si besoin
+		getCollectorUrlsByApplications();
+
+		urlsByApplications.put(application, null);
+		writeCollectorApplications();
+	}
+
 	static void removeCollectorApplication(String application) throws IOException {
 		assert application != null;
 		// initialisation si besoin
@@ -139,16 +154,18 @@ final class Parameters {
 		final String monitoringPath = getMonitoringPath();
 		for (final Map.Entry<String, List<URL>> entry : urlsByApplications.entrySet()) {
 			final List<URL> urls = entry.getValue();
-			assert urls != null && !urls.isEmpty();
+			//assert urls != null && !urls.isEmpty(); Bypass push applications
 			final StringBuilder sb = new StringBuilder();
-			for (final URL url : urls) {
-				final String urlString = url.toString();
-				// on enlève le suffixe ajouté précédemment dans parseUrl
-				final String webappUrl = urlString.substring(0,
-						urlString.lastIndexOf(monitoringPath));
-				sb.append(webappUrl).append(',');
+			if (urls != null) {
+				for (final URL url : urls) {
+					final String urlString = url.toString();
+					// on enlève le suffixe ajouté précédemment dans parseUrl
+					final String webappUrl = urlString.substring(0,
+							urlString.lastIndexOf(monitoringPath));
+					sb.append(webappUrl).append(',');
+					sb.delete(sb.length() - 1, sb.length());
+				}
 			}
-			sb.delete(sb.length() - 1, sb.length());
 			properties.put(entry.getKey(), sb.toString());
 		}
 		final File collectorApplicationsFile = getCollectorApplicationsFile();
@@ -164,6 +181,20 @@ final class Parameters {
 		}
 	}
 
+	static void updatePushAppTimeTable(String name) {
+		if (pushAppTimeTable == null) {
+			pushAppTimeTable = new HashMap<>();
+		}
+		pushAppTimeTable.put(name, new Date());
+	}
+
+	static Map<String, Date> getPushAppTimeTable() {
+		if (pushAppTimeTable == null) {
+			pushAppTimeTable = new HashMap<>();
+		}
+		return Collections.unmodifiableMap(pushAppTimeTable);
+	}
+
 	private static void readCollectorApplications() throws IOException {
 		// le fichier applications.properties contient les noms et les urls des applications à monitorer
 		// par ex.: recette=http://recette1:8080/myapp
@@ -172,6 +203,14 @@ final class Parameters {
 		// mais elles seront ordonnées lorsqu'elles seront mises dans cette TreeMap
 		final Map<String, List<URL>> result = new TreeMap<String, List<URL>>();
 		final File file = getCollectorApplicationsFile();
+		if (!file.exists()) { //It's been observed that the application file might be vanished due to unknown reason, as a failed save, render all application historical data directory and recreate the file.
+			File rootDir = getStorageDirectory("");
+			String[] appDataDirNames = rootDir.list();
+			file.createNewFile();
+			for (String appDataDirName : appDataDirNames) {
+				addCollectorApplication(appDataDirName);
+			}
+		}
 		if (file.exists()) {
 			final Properties properties = new Properties();
 			final FileInputStream input = new FileInputStream(file);
@@ -184,7 +223,15 @@ final class Parameters {
 			final List<String> propertyNames = (List<String>) Collections
 					.list(properties.propertyNames());
 			for (final String property : propertyNames) {
-				result.put(property, parseUrl(String.valueOf(properties.get(property))));
+				String url = String.valueOf(properties.get(property));
+				//Bypass push application
+				try {
+					result.put(property, parseUrl(url));
+				} catch (Exception e) {
+					LOG.info("Encounter null URL, put as push application. Ａpplication name: "
+							+ property);
+					result.put(property, null);
+				}
 			}
 		}
 		urlsByApplications = result;
@@ -195,6 +242,9 @@ final class Parameters {
 	}
 
 	static List<URL> parseUrl(String value) throws MalformedURLException {
+		if (value == null || value.equals("")) {
+			return null;
+		}
 		// pour un cluster, le paramètre vaut "url1,url2"
 		final TransportFormat transportFormat;
 		if (Parameters.getParameter(Parameter.TRANSPORT_FORMAT) == null) {
@@ -223,6 +273,14 @@ final class Parameters {
 		final String parameterValue = getParameter(Parameter.MONITORING_PATH);
 		if (parameterValue == null) {
 			return DEFAULT_MONITORING_PATH;
+		}
+		return parameterValue;
+	}
+
+	public static String getPushingPath() {
+		final String parameterValue = getParameter(Parameter.PUSHING_PATH);
+		if (parameterValue == null) {
+			return DEFAULT_PUSHING_PATH;
 		}
 		return parameterValue;
 	}
@@ -271,7 +329,7 @@ final class Parameters {
 	/**
 	 * @return Résolution en secondes des courbes et période d'appels par le serveur de collecte le cas échéant.
 	 */
-	static int getResolutionSeconds() {
+	public static int getResolutionSeconds() {
 		final String param = getParameter(Parameter.RESOLUTION_SECONDS);
 		if (param != null) {
 			// lance une NumberFormatException si ce n'est pas un nombre
@@ -283,6 +341,20 @@ final class Parameters {
 			return result;
 		}
 		return DEFAULT_RESOLUTION_SECONDS;
+	}
+
+	/**
+	 * @return The web service url for getting application's public ip address.
+	 */
+	public static String getIpWebserviceUrl() {
+		final String param = getParameter(Parameter.IP_WEBSERVICE_URL);
+		if (param != null) {
+			if ("".equals(param)) {
+				throw new IllegalStateException("The parameter ip-webservice-url can't be empty");
+			}
+			return param;
+		}
+		return DEFAULT_IP_WEBSERVICE_URL;
 	}
 
 	/**
@@ -309,6 +381,23 @@ final class Parameters {
 		}
 		if (servletContext != null) {
 			return new File(directory + '/' + application);
+		}
+		return new File(directory);
+	}
+
+	public static File getStorageRootDirectory() {
+		final String param = getParameter(Parameter.STORAGE_DIRECTORY);
+		final String dir;
+		if (param == null) {
+			dir = DEFAULT_DIRECTORY;
+		} else {
+			dir = param;
+		}
+		final String directory;
+		if (dir.length() > 0 && new File(dir).isAbsolute()) {
+			directory = dir;
+		} else {
+			directory = TEMPORARY_DIRECTORY.getPath() + '/' + dir;
 		}
 		return new File(directory);
 	}

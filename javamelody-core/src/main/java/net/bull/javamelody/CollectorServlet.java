@@ -50,6 +50,10 @@ public class CollectorServlet extends HttpServlet {
 	@Override
 	public void init(ServletConfig config) throws ServletException {
 		super.init(config);
+
+		LOGGER.info(
+				"JavaMelody stroage root path: " + Parameters.getStorageRootDirectory().getPath());
+
 		Parameters.initialize(config.getServletContext());
 		if (!Boolean.parseBoolean(Parameters.getParameter(Parameter.LOG))) {
 			// si log désactivé dans serveur de collecte,
@@ -81,16 +85,17 @@ public class CollectorServlet extends HttpServlet {
 		final String application = collectorController.getApplication(req, resp);
 		I18N.bindLocale(req.getLocale());
 		try {
-			if (application == null) {
-				CollectorController.writeOnlyAddApplication(resp);
-				return;
-			}
-			if (!collectorServer.isApplicationDataAvailable(application)) {
-				resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-						"Data unavailable for the application "
-								+ I18N.htmlEncode(application, false));
-				return;
-			}
+			// Comment out below code is for making unavailable applications visible.
+			//			if (application == null) {
+			//				CollectorController.writeOnlyAddApplication(resp);
+			//				return;
+			//			}
+			//			if (!collectorServer.isApplicationDataAvailable(application)) {
+			//				resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+			//						"Data unavailable for the application "
+			//								+ I18N.htmlEncode(application, false));
+			//				return;
+			//			}
 			collectorController.doMonitoring(req, resp, application);
 		} finally {
 			I18N.unbindLocale();
@@ -118,6 +123,13 @@ public class CollectorServlet extends HttpServlet {
 		I18N.bindLocale(req.getLocale());
 		final CollectorController collectorController = new CollectorController(collectorServer);
 		try {
+
+			// If push data from applications
+			String queryString = req.getRequestURI().replace(req.getContextPath(), "");
+			if (queryString != null && queryString.equals(Parameters.getPushingPath())) {
+				collectorController.pushApplicationData(req, resp);
+			}
+
 			if (appName == null || appUrls == null) {
 				writeMessage(req, resp, collectorController, I18N.getString("donnees_manquantes"));
 				return;

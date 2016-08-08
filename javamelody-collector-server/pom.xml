@@ -135,7 +135,8 @@
 							<!-- Main-Class to launch as "java -jar javamelody-xxx.war" with Winstone -->
 							<Main-Class>net.bull.javamelody.Main</Main-Class>
 							<!-- Override user.name in Built-By -->
-							<Built-By>Emeric Vernat</Built-By>
+							<!-- <Built-By>Emeric Vernat</Built-By> -->
+							<Built-By>Greg Huang</Built-By>
 						</manifestEntries>
 					</archive>
 				</configuration>

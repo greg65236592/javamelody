@@ -109,7 +109,7 @@ public class MonitoringFilter implements Filter {
 
 		LOG.debug("JavaMelody filter init started");
 
-		this.filterContext = new FilterContext();
+		this.filterContext = FilterContext.getFilterContextSingleton();
 		this.httpAuth = new HttpAuth();
 		config.getServletContext().setAttribute(ReportServlet.FILTER_CONTEXT_KEY, filterContext);
 		final Collector collector = filterContext.getCollector();

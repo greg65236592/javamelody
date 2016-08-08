@@ -47,13 +47,20 @@ import static net.bull.javamelody.HttpParameters.WIDTH_PARAMETER;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.net.URI;
 import java.net.URLDecoder;
+import java.nio.charset.Charset;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 import javax.servlet.ServletContext;
@@ -62,11 +69,19 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.mime.HttpMultipartMode;
+import org.apache.http.entity.mime.MultipartEntityBuilder;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+
 /**
  * Contrôleur au sens MVC de l'ihm de monitoring.
  * @author Emeric Vernat
  */
-class MonitoringController {
+public class MonitoringController {
 	static {
 		boolean webXmlExists = false;
 		boolean pomXmlExists = false;
@@ -98,7 +113,7 @@ class MonitoringController {
 	private String messageForReport;
 	private String anchorNameForRedirect;
 
-	MonitoringController(Collector collector, CollectorServer collectorServer) {
+	public MonitoringController(Collector collector, CollectorServer collectorServer) {
 		super();
 		assert collector != null;
 		this.collector = collector;
@@ -163,6 +178,56 @@ class MonitoringController {
 		}
 
 		doReport(httpRequest, httpResponse, Collections.singletonList(javaInformations));
+	}
+
+	/**
+	 * Collect app information in serial format and push to centralized server.
+	 * 
+	 * @param servletContext
+	 * @param remoteServerUrl 
+	 * @param appFullName 
+	 * @throws IOException
+	 */
+	public String doActionCollectDataForPush(ServletContext servletContext, URI remoteServerUrl,
+			String appFullName) throws IOException {
+		JavaInformations javaInformations = new JavaInformations(servletContext, true);
+		Range range = new Range(Period.TOUT, null, null);
+		final SerializableController serializableController = new SerializableController(collector);
+		String messageRepost = null;
+		Serializable serializable = serializableController.createDefaultSerializable(
+				Collections.singletonList(javaInformations), range, messageRepost);
+
+		CloseableHttpClient httpclient = HttpClients.createDefault();
+		HttpPost httpPost = new HttpPost(remoteServerUrl);
+
+		MultipartEntityBuilder builder = MultipartEntityBuilder.create()
+				.setMode(HttpMultipartMode.BROWSER_COMPATIBLE).setCharset(Charset.forName("UTF-8"));
+
+		final String fileName = "JavaMelody_" + appFullName.replace(' ', '_').replace("/", "") + '_'
+				+ I18N.getCurrentDate().replace('/', '_') + '.'
+				+ this.toString().toLowerCase(Locale.ENGLISH);
+
+		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+		ObjectOutput out = null;
+		out = new ObjectOutputStream(bos);
+		out.writeObject(serializable);
+		byte[] yourBytes = bos.toByteArray();
+
+		builder.addBinaryBody("file", yourBytes, ContentType.APPLICATION_OCTET_STREAM, fileName);
+		builder.addTextBody(HttpParameters.APPLICATION, appFullName);
+
+		HttpEntity entity = builder.build();
+		httpPost.setEntity(entity);
+
+		//Send request
+		httpclient.execute(httpPost);
+		Date currentTime = new Date();
+		LOG.info("Push data to javamelody server, time: " + currentTime);
+
+		//stop collecting from local
+		FilterContext.getFilterContextSingleton().stopCollector();
+
+		return messageRepost;
 	}
 
 	void doReport(HttpServletRequest httpRequest, HttpServletResponse httpResponse,

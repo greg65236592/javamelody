@@ -18,8 +18,11 @@
 package net.bull.javamelody;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -110,27 +113,128 @@ class CollectorServer {
 			executorService.submit(new Runnable() {
 				@Override
 				public void run() {
+					if (urls == null || urls.size() == 0) { //Push applicaiton collecor
+						checkIfPushApplicationTimeout(application);
+					}
 					collectForApplicationWithoutErrors(application, urls);
 				}
 			});
 		}
 	}
 
+	String collectPushData(String appName, String contentType, InputStream is) {
+		String messageForReport = null;
+		try {
+			final boolean remoteCollectorAvailable = isApplicationDataAvailable(appName);
+			final RemoteCollector remoteCollector;
+			if (!remoteCollectorAvailable) {
+				remoteCollector = new RemoteCollector(appName);
+			} else {
+				remoteCollector = getRemoteCollectorByApplication(appName);
+			}
+
+			final List<JavaInformations> javaInfosList = new ArrayList<>();
+			messageForReport = remoteCollector.collectPushData(contentType, is, javaInfosList);
+
+			final Collector collector = remoteCollector.getCollector();
+			collector.collectWithoutErrors(javaInfosList);
+
+		} catch (final Throwable e) { // NOPMD
+			// si erreur sur une webapp (indisponibilité par exemple), on continue avec les autres
+			// et il ne doit y avoir aucune erreur dans cette task
+			try {
+				LOGGER.warn("exception while collecting data for push application " + appName);
+				LOGGER.warn(e.toString(), e);
+				final boolean becameUnavailable = !lastCollectExceptionsByApplication
+						.containsKey(appName);
+				lastCollectExceptionsByApplication.put(appName, e);
+
+				if (becameUnavailable) {
+					final String subject = "The application[push] " + appName
+							+ " is unavailable for the monitoring server";
+					final String message = subject + "\n\nCause:\n" + e.toString();
+					notifyAdmins(subject, message);
+				}
+			} catch (final Throwable e2) { // NOPMD
+				// tant pis, on continue quand même
+				return messageForReport;
+			}
+		}
+		return messageForReport;
+	}
+
+	void checkIfPushApplicationTimeout(String appName) {
+		//Check the update time.
+		final boolean becameAvailable = lastCollectExceptionsByApplication.containsKey(appName)
+				&& checkPushApplicationAvalible(appName);
+		final boolean becameUnAvailable = !lastCollectExceptionsByApplication.containsKey(appName)
+				&& !checkPushApplicationAvalible(appName);
+		if (becameUnAvailable) {
+			shutDownUnavailablePushAppCollector(appName);
+		} else if (becameAvailable) {
+			resumeAvailablePushAppCollector(appName);
+		}
+	}
+
+	private void shutDownUnavailablePushAppCollector(String appName) {
+		try {
+			LOGGER.warn("exception while collecting data for push application " + appName);
+			final boolean becameUnavailable = !lastCollectExceptionsByApplication
+					.containsKey(appName);
+			Exception e = new IllegalStateException("Application push timeout.");
+			lastCollectExceptionsByApplication.put(appName, e);
+
+			if (becameUnavailable) {
+				final String subject = "The application[push] " + appName
+						+ " is unavailable for the monitoring server";
+				final String message = subject + "\n\nCause:\n" + e.toString();
+				notifyAdmins(subject, message);
+			}
+		} catch (final Throwable e2) { // NOPMD
+			// tant pis, on continue quand même
+			return;
+		}
+	}
+
+	private void resumeAvailablePushAppCollector(String appName) {
+		lastCollectExceptionsByApplication.remove(appName);
+		final String subject = "The application " + appName
+				+ " is available again for the monitoring server";
+		notifyAdmins(subject, subject);
+	}
+
+	private boolean checkPushApplicationAvalible(String appName) {
+		Map<String, Date> updateTimeTable = Parameters.getPushAppTimeTable();
+		Date updateTime = updateTimeTable.get(appName);
+		Date currentTme = new Date();
+		int pushPeriodInMilliSec = Parameters.getResolutionSeconds() * 1000;
+		if (updateTime == null
+				|| (currentTme.getTime() - updateTime.getTime() > pushPeriodInMilliSec * 2)) {
+			return false;
+		}
+		return true;
+	}
+
 	String collectForApplicationForAction(String application, List<URL> urls) throws IOException {
-		return collectForApplication(new RemoteCollector(application, urls));
+		if (urls != null && urls.size() > 0) {
+			return collectForApplication(new RemoteCollector(application, urls));
+		}
+		//If collect push data.
+		return "";
 	}
 
 	void collectForApplicationWithoutErrors(String application, List<URL> urls) {
 		try {
-			collectForApplication(application, urls);
-			final boolean becameAvailable = lastCollectExceptionsByApplication
-					.containsKey(application);
-			lastCollectExceptionsByApplication.remove(application);
-
-			if (becameAvailable) {
-				final String subject = "The application " + application
-						+ " is available again for the monitoring server";
-				notifyAdmins(subject, subject);
+			if (urls != null && urls.size() > 0) { //Only apply for normal application, not push.
+				collectForApplication(application, urls);
+				final boolean becameAvailable = lastCollectExceptionsByApplication
+						.containsKey(application);
+				lastCollectExceptionsByApplication.remove(application);
+				if (becameAvailable) {
+					final String subject = "The application " + application
+							+ " is available again for the monitoring server";
+					notifyAdmins(subject, subject);
+				}
 			}
 		} catch (final Throwable e) { // NOPMD
 			// si erreur sur une webapp (indisponibilité par exemple), on continue avec les autres
@@ -159,7 +263,11 @@ class CollectorServer {
 		final boolean remoteCollectorAvailable = isApplicationDataAvailable(application);
 		final RemoteCollector remoteCollector;
 		if (!remoteCollectorAvailable) {
-			remoteCollector = new RemoteCollector(application, urls);
+			if (urls != null && urls.size() > 0) {
+				remoteCollector = new RemoteCollector(application, urls);
+			} else {
+				remoteCollector = new RemoteCollector(application);
+			}
 		} else {
 			remoteCollector = getRemoteCollectorByApplication(application);
 		}
@@ -182,14 +290,39 @@ class CollectorServer {
 		return messageForReport;
 	}
 
+	String collectForApplication(String application, String contentType, InputStream is) {
+		final boolean remoteCollectorAvailable = isApplicationDataAvailable(application);
+		final RemoteCollector remoteCollector;
+		if (!remoteCollectorAvailable) {
+			remoteCollector = new RemoteCollector(application);
+		} else {
+			remoteCollector = getRemoteCollectorByApplication(application);
+		}
+
+		final String messageForReport = collectPushData(application, contentType, is);
+
+		if (!remoteCollectorAvailable) {
+			// on initialise les remoteCollectors au fur et à mesure
+			// puisqu'on ne peut pas forcément au démarrage
+			// car la webapp à monitorer peut être indisponible
+			remoteCollectorsByApplication.put(application, remoteCollector);
+
+			if (Parameters.getParameter(Parameter.MAIL_SESSION) != null
+					&& Parameters.getParameter(Parameter.ADMIN_EMAILS) != null) {
+				scheduleReportMailForCollectorServer(application);
+				LOGGER.info("Periodic report scheduled for the application " + application + " to "
+						+ Parameters.getParameter(Parameter.ADMIN_EMAILS));
+			}
+		}
+		return messageForReport;
+	}
+
 	private String collectForApplication(RemoteCollector remoteCollector) throws IOException {
 		final String application = remoteCollector.getApplication();
 		final List<URL> urls = remoteCollector.getURLs();
 		LOGGER.info("collect for the application " + application + " on " + urls);
 		assert application != null;
-		assert urls != null;
 		final long start = System.currentTimeMillis();
-
 		final String messageForReport = remoteCollector.collectData();
 		final List<JavaInformations> javaInformationsList = remoteCollector
 				.getJavaInformationsList();
@@ -266,6 +399,9 @@ class CollectorServer {
 			final String addedUrlInExternalForm = addedUrl.toExternalForm();
 			for (final Map.Entry<String, List<URL>> entry : collectorUrlsByApplications
 					.entrySet()) {
+				if (entry.getValue() == null) {
+					continue;
+				}
 				for (final URL existingUrl : entry.getValue()) {
 					if (existingUrl.toExternalForm().equals(addedUrlInExternalForm)) {
 						throw new IOException("The URL "
@@ -279,6 +415,13 @@ class CollectorServer {
 		}
 		collectForApplication(application, urls);
 		Parameters.addCollectorApplication(application, urls);
+	}
+
+	void addPushApplication(String application, String contentType, InputStream is)
+			throws IOException {
+		collectForApplication(application, contentType, is);
+		Parameters.addCollectorApplication(application);
+		Parameters.updatePushAppTimeTable(application);
 	}
 
 	void removeCollectorApplication(String application) throws IOException {
@@ -298,7 +441,10 @@ class CollectorServer {
 		}
 		final RemoteCollector remoteCollector = remoteCollectorsByApplication.get(application);
 		if (remoteCollector == null) {
-			return null;
+			//For the first creation of remote collector while sevlet is initializing.
+			RemoteCollector newRemoteCollector = new RemoteCollector(application);
+			remoteCollectorsByApplication.put(application, newRemoteCollector);
+			return newRemoteCollector.getCollector();
 		}
 		return remoteCollector.getCollector();
 	}

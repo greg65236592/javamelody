@@ -33,13 +33,14 @@ import java.util.regex.Pattern;
  * Contexte du filtre http pour initialisation et destruction.
  * @author Emeric Vernat
  */
-class FilterContext {
+public class FilterContext {
 	private static final boolean MOJARRA_AVAILABLE = isMojarraAvailable();
 
 	private final Collector collector;
 	private final Timer timer;
 	private final SamplingProfiler samplingProfiler;
 	private final TimerTask collectTimerTask;
+	private static FilterContext filterContext;
 
 	private static final class CollectTimerTask extends TimerTask {
 		private final Collector collector;
@@ -57,7 +58,14 @@ class FilterContext {
 		}
 	}
 
-	FilterContext() {
+	public static FilterContext getFilterContextSingleton() {
+		if (filterContext == null) {
+			filterContext = new FilterContext();
+		}
+		return filterContext;
+	}
+
+	private FilterContext() {
 		super();
 
 		boolean initOk = false;
@@ -424,7 +432,7 @@ class FilterContext {
 		LoggingHandler.getSingleton().deregister();
 	}
 
-	Collector getCollector() {
+	public Collector getCollector() {
 		return collector;
 	}
 

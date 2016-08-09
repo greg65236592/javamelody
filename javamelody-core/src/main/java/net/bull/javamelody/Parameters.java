@@ -205,6 +205,9 @@ public final class Parameters {
 		final File file = getCollectorApplicationsFile();
 		if (!file.exists()) { //It's been observed that the application file might be vanished due to unknown reason, as a failed save, render all application historical data directory and recreate the file.
 			File rootDir = getStorageDirectory("");
+			if (!rootDir.exists()) {
+				rootDir.mkdirs();
+			}
 			String[] appDataDirNames = rootDir.list();
 			file.createNewFile();
 			for (String appDataDirName : appDataDirNames) {

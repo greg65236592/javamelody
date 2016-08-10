@@ -222,7 +222,8 @@ public class MonitoringController {
 		//Send request
 		httpclient.execute(httpPost);
 		Date currentTime = new Date();
-		LOG.info("Push data to javamelody server, time: " + currentTime);
+		LOG.info("Application " + appFullName + " push data to javamelody server("
+				+ remoteServerUrl.toString() + "), time: " + currentTime);
 
 		//stop collecting from local
 		FilterContext.getFilterContextSingleton().stopCollector();

@@ -54,6 +54,7 @@
 					<include name="tomcat-jdbc-7.0.27.jar" />
 					<include name="httpclient-4.3.5.jar" />
 					<include name="httpmime-4.3.5.jar" />
+					<include name="httpcore-4.3.2.jar" />
 				</fileset>
 				<fileset dir="src/test/test-webapp/WEB-INF/lib">
 					<include name="jrobin-1.5.9.1.jar" />

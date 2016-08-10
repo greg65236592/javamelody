@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>net.bull.javamelody</groupId>
 	<artifactId>javamelody-core</artifactId>
-	<version>1.61.1-custom</version>
+	<version>1.61.2-custom</version>
 	<packaging>jar</packaging>
 	<name>JavaMelody - Core</name>
 	<description>Monitoring of JavaEE applications</description>
@@ -272,6 +272,12 @@
 		    <groupId>org.apache.httpcomponents</groupId>
 		    <artifactId>httpmime</artifactId>
 		    <version>4.3.5</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.apache.httpcomponents/httpcore -->
+		<dependency>
+		    <groupId>org.apache.httpcomponents</groupId>
+		    <artifactId>httpcore</artifactId>
+		    <version>4.3.2</version>
 		</dependency>
 	</dependencies>
 

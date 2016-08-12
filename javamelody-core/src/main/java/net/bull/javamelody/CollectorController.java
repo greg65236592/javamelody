@@ -574,14 +574,15 @@ class CollectorController { // NOPMD
 		if (application == null) {
 			// pas de paramètre application dans la requête, on cherche le cookie
 			final Cookie cookie = httpCookieManager.getCookieByName(req, COOKIE_NAME);
-			if (cookie != null) {
-				application = cookie.getValue();
-				//				if (!collectorServer.isApplicationDataAvailable(application)) {
-				//					cookie.setMaxAge(-1);
-				//					resp.addCookie(cookie);
-				//					application = null;
-				//				}
-			}
+			//Abandon using cookie to get application name
+			//			if (cookie != null) {
+			//				application = cookie.getValue();
+			//				if (!collectorServer.isApplicationDataAvailable(application)) {
+			//					cookie.setMaxAge(-1);
+			//					resp.addCookie(cookie);
+			//					application = null;
+			//				}
+			//			}
 			if (application == null) {
 				// pas de cookie, on prend la première application si elle existe
 				application = collectorServer.getFirstApplication();

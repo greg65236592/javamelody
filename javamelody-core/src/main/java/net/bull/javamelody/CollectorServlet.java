@@ -20,6 +20,11 @@ package net.bull.javamelody; // NOPMD
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.StreamCorruptedException;
+import java.net.URL;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -82,20 +87,47 @@ public class CollectorServlet extends HttpServlet {
 
 		final long start = System.currentTimeMillis();
 		final CollectorController collectorController = new CollectorController(collectorServer);
-		final String application = collectorController.getApplication(req, resp);
+		/*
+		 * Get app name
+		 */
+		String application = collectorController.getApplication(req, resp);
 		I18N.bindLocale(req.getLocale());
 		try {
-			// Comment out below code is for making unavailable applications visible.
-			//			if (application == null) {
-			//				CollectorController.writeOnlyAddApplication(resp);
-			//				return;
-			//			}
-			//			if (!collectorServer.isApplicationDataAvailable(application)) {
-			//				resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-			//						"Data unavailable for the application "
-			//								+ I18N.htmlEncode(application, false));
-			//				return;
-			//			}
+			Map<String, List<URL>> appMap = Parameters.getCollectorUrlsByApplications();
+			//If application == null, try to get name from current collectors.
+			if (application == null) {
+				if (appMap != null) {
+					Set<Entry<String, List<URL>>> entries = appMap.entrySet();
+					for (Entry<String, List<URL>> entry : entries) {
+						application = entry.getKey();
+					}
+				}
+			}
+			// If no collectors found, and application == null, there will be to application data to be shown.
+			if (application == null
+					&& Parameters.getCollectorUrlsByApplications().keySet().size() == 0) {
+				CollectorController.writeOnlyAddApplication(resp);
+				return;
+			}
+			boolean appCollectorExists = false;
+			if (appMap != null) {
+				Set<Entry<String, List<URL>>> entries = appMap.entrySet();
+				for (Entry<String, List<URL>> entry : entries) {
+					String appName = entry.getKey();
+					if (appName.equals(application)) {
+						appCollectorExists = true;
+					}
+				}
+			}
+			// If application != null && no corresponding collectors.
+			if (application != null && !appCollectorExists) {
+				if (!collectorServer.isApplicationDataAvailable(application)) {
+					resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+							"Data unavailable for the application "
+									+ I18N.htmlEncode(application, false));
+					return;
+				}
+			}
 			collectorController.doMonitoring(req, resp, application);
 		} finally {
 			I18N.unbindLocale();

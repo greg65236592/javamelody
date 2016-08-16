@@ -163,15 +163,14 @@ public class CentralizedServerPushListener implements ServletContextListener {
 
 		@Override
 		public void run() {
+			//Set full app name
+			String fullAppName = appName + "-ip:" + appAddress;
+
 			try {
 				FilterContext filterContext = FilterContext.getFilterContextSingleton();
 				final Collector collector = filterContext.getCollector();
 				final MonitoringController monitoringController = new MonitoringController(
 						collector, null);
-
-				//Set full app name
-				String fullAppName = appName + "-ip:" + appAddress;
-
 				URIBuilder centralizeServerbuilder = new URIBuilder();
 				centralizeServerbuilder.setScheme("http").setHost(centralizedServerAddress)
 						.setPort(new Integer(centralizedServerPort))
@@ -184,8 +183,8 @@ public class CentralizedServerPushListener implements ServletContextListener {
 				monitoringController.doActionCollectDataForPush(servletContext,
 						centralizeServerbuilder.build(), fullAppName);
 			} catch (Exception e) {
-				LOGGER_INNER.warn(
-						"Push to Javamelody centralized server failed! Reason: " + e.toString());
+				LOGGER_INNER.warn("***Push to Javamelody centralized server failed!(" + fullAppName
+						+ ") Reason: " + e.toString());
 				LOGGER_INNER.debug("Detail info: ", e);
 			}
 		}

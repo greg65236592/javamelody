@@ -184,7 +184,9 @@ public class CentralizedServerPushListener implements ServletContextListener {
 				monitoringController.doActionCollectDataForPush(servletContext,
 						centralizeServerbuilder.build(), fullAppName);
 			} catch (Exception e) {
-				LOGGER_INNER.error("Push to Javamelody centralized server failed!", e);
+				LOGGER_INNER.warn(
+						"Push to Javamelody centralized server failed! Reason: " + e.toString());
+				LOGGER_INNER.debug("Detail info: ", e);
 			}
 		}
 	}
